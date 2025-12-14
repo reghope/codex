@@ -151,8 +151,6 @@ Print the Plan Mode entry output now:
 - Goal (1–2 lines)
 - Plan (numbered steps)
 - Decision points (round 1 of up to 5 rounds; 1–5 questions)
-- Checkpoints
-- Rollback
 
 Decision points formatting (required):
 - Use an exact section header line: "Decision points"

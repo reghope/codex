@@ -120,6 +120,7 @@ fn sanitize_plan_mode_decision_point_options(source: &str) -> Cow<'_, str> {
     let mut out = String::with_capacity(source.len());
     let mut in_decision_points = false;
     let mut removed_any = false;
+    let mut last_was_blank = false;
 
     for line in source.split_inclusive('\n') {
         let line_without_newline = line.strip_suffix('\n').unwrap_or(line);
@@ -127,6 +128,7 @@ fn sanitize_plan_mode_decision_point_options(source: &str) -> Cow<'_, str> {
 
         if !in_decision_points {
             out.push_str(line);
+            last_was_blank = trimmed.is_empty();
             if is_decision_points_header(trimmed) {
                 in_decision_points = true;
             }
@@ -136,24 +138,17 @@ fn sanitize_plan_mode_decision_point_options(source: &str) -> Cow<'_, str> {
         if is_plan_section_header(trimmed) {
             in_decision_points = false;
             out.push_str(line);
+            last_was_blank = trimmed.is_empty();
             continue;
         }
 
-        if trimmed.is_empty() {
-            out.push_str(line);
-            continue;
+        // Hide the entire Decision points block (questions + options) from the transcript;
+        // the interactive UI will render and collect answers.
+        removed_any = true;
+        if !last_was_blank {
+            out.push('\n');
+            last_was_blank = true;
         }
-
-        if line_without_newline
-            .chars()
-            .next()
-            .is_some_and(char::is_whitespace)
-        {
-            removed_any = true;
-            continue;
-        }
-
-        out.push_str(line);
     }
 
     if removed_any {
@@ -247,8 +242,8 @@ mod tests {
             "expected plan section line retained, got:\n{plain}"
         );
         assert!(
-            plain.contains("Scope") && plain.contains("Choose one"),
-            "expected question prompt retained, got:\n{plain}"
+            !plain.contains("Scope") && !plain.contains("Choose one"),
+            "expected questions hidden, got:\n{plain}"
         );
         assert!(
             !plain.contains("Option A") && !plain.contains("Option B"),

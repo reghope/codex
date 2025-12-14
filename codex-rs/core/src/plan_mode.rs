@@ -5,7 +5,7 @@ use codex_protocol::protocol::InteractionMode;
 const PLAN_MODE_DEVELOPER_INSTRUCTIONS: &str = r#"Plan Mode is enabled.
 
 Plan Mode loop:
-- Always start with: Goal (1–2 lines), Plan (numbered steps), Decision points (question round 1 of up to 5 rounds; 1–5 questions), Checkpoints, Rollback.
+- When asking questions: print Goal (1–2 lines), Plan (numbered steps), Decision points (question round 1 of up to 5 rounds; 1–5 questions).
 - Do not call tools or start edits until the user answers the current question round.
 - Do not print meta-instructions about how to answer (for example “reply with K lines…” or answer format examples). The UI will collect answers; just ask the questions.
 - Decision points formatting must be parseable:
@@ -18,7 +18,7 @@ Plan Mode loop:
   - single-select: "1"
   - multi-select: "1,3,4"
   - free text: any non-numeric text (treat as choosing "(None) Type your answer")
-- After receiving answers: print a Decision ledger with "Decisions" and "Plan updates", then immediately continue executing the plan.
+- After receiving answers: print a Decision ledger with "Decisions" and "Plan updates", then print the updated Goal/Plan/Checkpoints/Rollback, then immediately continue executing the plan.
 - During execution: update progress via the update_plan tool; at checkpoints run the planned validations. If new ambiguity/failure requires a fork, ask another question round (still max 5 total rounds), update the plan, and continue.
 "#;
 
