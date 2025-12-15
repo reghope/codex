@@ -145,8 +145,13 @@ use strum::IntoEnumIterator;
 
 const USER_SHELL_COMMAND_HELP_TITLE: &str = "Prefix a command with ! to run it locally";
 const USER_SHELL_COMMAND_HELP_HINT: &str = "Example: !ls";
-const PLAN_MODE_ENTRY_PROMPT: &str = r#"<user_instructions>
+const PLAN_MODE_ENTRY_PROMPT_PREFIX: &str = r#"<user_instructions>
 Plan Mode entry requested.
+
+User request:
+"#;
+
+const PLAN_MODE_ENTRY_PROMPT_SUFFIX: &str = r#"
 
 Print the Plan Mode entry output now:
 - Goal (1–2 lines)
@@ -166,8 +171,13 @@ Do not include answer-format instructions or reply examples in the output; the U
 Do not execute yet; wait for answers.
 </user_instructions>"#;
 
-const PLAN_MODE_REPLAN_PROMPT: &str = r#"<user_instructions>
+const PLAN_MODE_REPLAN_PROMPT_PREFIX: &str = r#"<user_instructions>
 Re-plan from the current context. Keep completed steps as completed unless the user asked to rewind.
+
+User request:
+"#;
+
+const PLAN_MODE_REPLAN_PROMPT_SUFFIX: &str = r#"
 
 Decision points formatting (required):
 - Use an exact section header line: "Decision points"
@@ -179,6 +189,14 @@ Print an updated Goal/Plan/Decision points/Checkpoints/Rollback, then wait for a
 Prefer a single question round; only ask follow-ups if strictly necessary.
 Do not include answer-format instructions or reply examples in the output; the UI will collect answers.
 </user_instructions>"#;
+
+fn plan_mode_entry_prompt(message: &str) -> String {
+    format!("{PLAN_MODE_ENTRY_PROMPT_PREFIX}{message}{PLAN_MODE_ENTRY_PROMPT_SUFFIX}")
+}
+
+fn plan_mode_replan_prompt(message: &str) -> String {
+    format!("{PLAN_MODE_REPLAN_PROMPT_PREFIX}{message}{PLAN_MODE_REPLAN_PROMPT_SUFFIX}")
+}
 // Track information about an in-flight exec command.
 struct RunningCommand {
     command: Vec<String>,
@@ -1565,6 +1583,10 @@ impl ChatWidget {
                     InputResult::Command(cmd) => {
                         self.dispatch_command(cmd);
                     }
+                    InputResult::Plan { message } => {
+                        let image_paths = self.bottom_pane.take_recent_submission_images();
+                        self.submit_plan_message(message, image_paths);
+                    }
                     InputResult::None => {}
                 }
             }
@@ -1633,7 +1655,7 @@ impl ChatWidget {
                 self.open_model_popup();
             }
             SlashCommand::Plan => {
-                self.enter_plan_mode();
+                self.add_info_message("Usage: /plan <message>".to_string(), None);
             }
             SlashCommand::Approvals => {
                 self.open_approvals_popup();
@@ -1733,20 +1755,55 @@ impl ChatWidget {
         }
     }
 
-    fn enter_plan_mode(&mut self) {
+    fn submit_plan_message(&mut self, message: String, image_paths: Vec<PathBuf>) {
+        let message = message.trim().to_string();
+        if message.is_empty() && image_paths.is_empty() {
+            return;
+        }
+
         let is_already_plan = self.bottom_pane.interaction_mode() == InteractionMode::Plan;
         self.set_interaction_mode(InteractionMode::Plan);
 
         let prompt = if is_already_plan {
-            PLAN_MODE_REPLAN_PROMPT
+            plan_mode_replan_prompt(&message)
         } else {
-            PLAN_MODE_ENTRY_PROMPT
+            plan_mode_entry_prompt(&message)
         };
-        self.submit_op(Op::UserInput {
-            items: vec![UserInput::Text {
-                text: prompt.to_string(),
-            }],
-        });
+
+        let display_text = format!("/plan {message}");
+
+        let mut items: Vec<UserInput> = vec![UserInput::Text { text: prompt }];
+
+        for path in image_paths {
+            items.push(UserInput::LocalImage { path });
+        }
+
+        if let Some(skills) = self.bottom_pane.skills() {
+            let skill_mentions = find_skill_mentions(&display_text, skills);
+            for skill in skill_mentions {
+                items.push(UserInput::Skill {
+                    name: skill.name.clone(),
+                    path: skill.path.clone(),
+                });
+            }
+        }
+
+        self.codex_op_tx
+            .send(Op::UserInput { items })
+            .unwrap_or_else(|e| {
+                tracing::error!("failed to send message: {e}");
+            });
+
+        self.codex_op_tx
+            .send(Op::AddToHistory {
+                text: display_text.clone(),
+            })
+            .unwrap_or_else(|e| {
+                tracing::error!("failed to send AddHistory op: {e}");
+            });
+
+        self.add_to_history(history_cell::new_user_prompt(display_text));
+        self.needs_final_message_separator = false;
     }
 
     fn set_interaction_mode(&mut self, mode: InteractionMode) {
@@ -1769,7 +1826,7 @@ impl ChatWidget {
         };
 
         // Shift+Tab is a mode toggle only; it should not start a new turn.
-        // Use `/plan` to trigger immediate plan output.
+        // Use `/plan <message>` to trigger immediate plan output.
         self.set_interaction_mode(next);
     }
 

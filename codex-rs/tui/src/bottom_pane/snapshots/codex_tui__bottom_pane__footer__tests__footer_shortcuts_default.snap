@@ -1,5 +1,6 @@
 ---
 source: tui/src/bottom_pane/footer.rs
+assertion_line: 476
 expression: terminal.backend()
 ---
-"  ? for shortcuts · [plan] · 100% context left                                  "
+"  100% context left · ? for shortcuts                                           "

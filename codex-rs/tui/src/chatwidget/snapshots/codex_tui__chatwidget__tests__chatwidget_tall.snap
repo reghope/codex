@@ -1,5 +1,6 @@
 ---
 source: tui/src/chatwidget/tests.rs
+assertion_line: 3351
 expression: term.backend().vt100().screen().contents()
 ---
 
@@ -25,4 +26,4 @@ expression: term.backend().vt100().screen().contents()
 
 › Ask Codex to do anything
 
-  ? for shortcuts · [plan] · 100% context left
+  100% context left · ? for shortcuts

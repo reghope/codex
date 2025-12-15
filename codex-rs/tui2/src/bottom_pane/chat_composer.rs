@@ -74,6 +74,7 @@ const LARGE_PASTE_CHAR_THRESHOLD: usize = 1000;
 pub enum InputResult {
     Submitted(String),
     Command(SlashCommand),
+    Plan { message: String },
     None,
 }
 
@@ -477,11 +478,11 @@ impl ChatComposer {
                                 return (InputResult::Command(cmd), true);
                             }
 
-                            let starts_with_cmd = first_line
-                                .trim_start()
-                                .starts_with(&format!("/{}", cmd.command()));
+                            let cmd_name = cmd.command();
+                            let starts_with_cmd =
+                                first_line.trim_start().starts_with(&format!("/{cmd_name}"));
                             if !starts_with_cmd {
-                                self.textarea.set_text(&format!("/{} ", cmd.command()));
+                                self.textarea.set_text(&format!("/{cmd_name} "));
                             }
                             if !self.textarea.text().is_empty() {
                                 cursor_target = Some(self.textarea.text().len());
@@ -532,6 +533,21 @@ impl ChatComposer {
                 if let Some(sel) = popup.selected_item() {
                     match sel {
                         CommandItem::Builtin(cmd) => {
+                            if cmd == SlashCommand::Plan {
+                                // `/plan` requires a message; keep the composer open for editing.
+                                let cmd_name = cmd.command();
+                                let prefix = format!("/{cmd_name} ");
+                                let first_line = self.textarea.text().lines().next().unwrap_or("");
+                                let starts_with_cmd = first_line.trim_start().starts_with(&prefix);
+                                if !starts_with_cmd {
+                                    self.textarea.set_text(&prefix);
+                                } else if self.textarea.text() == format!("/{cmd_name}") {
+                                    self.textarea.set_text(&prefix);
+                                }
+                                self.textarea.set_cursor(self.textarea.text().len());
+                                self.active_popup = ActivePopup::None;
+                                return (InputResult::None, true);
+                            }
                             self.textarea.set_text("");
                             return (InputResult::Command(cmd), true);
                         }
@@ -1092,6 +1108,15 @@ impl ChatComposer {
                         .into_iter()
                         .find(|(n, _)| *n == name)
                 {
+                    if cmd == SlashCommand::Plan {
+                        self.app_event_tx.send(AppEvent::InsertHistoryCell(Box::new(
+                            history_cell::new_info_event(
+                                "Usage: /plan <message>".to_string(),
+                                None,
+                            ),
+                        )));
+                        return (InputResult::None, true);
+                    }
                     self.textarea.set_text("");
                     return (InputResult::Command(cmd), true);
                 }
@@ -1152,9 +1177,29 @@ impl ChatComposer {
                 // If there is neither text nor attachments, suppress submission entirely.
                 let has_attachments = !self.attached_images.is_empty();
                 text = text.trim().to_string();
-                if let Some((name, _rest)) = parse_slash_name(&text) {
+                if let Some((name, rest)) = parse_slash_name(&text) {
                     let treat_as_plain_text = input_starts_with_space || name.contains('/');
                     if !treat_as_plain_text {
+                        if name == SlashCommand::Plan.command() {
+                            if rest.is_empty() {
+                                self.app_event_tx.send(AppEvent::InsertHistoryCell(Box::new(
+                                    history_cell::new_info_event(
+                                        "Usage: /plan <message>".to_string(),
+                                        None,
+                                    ),
+                                )));
+                                self.textarea.set_text(&original_input);
+                                self.textarea.set_cursor(original_input.len());
+                                return (InputResult::None, true);
+                            }
+                            self.history.record_local_submission(&text);
+                            return (
+                                InputResult::Plan {
+                                    message: rest.to_string(),
+                                },
+                                true,
+                            );
+                        }
                         let is_builtin = built_in_slash_commands()
                             .into_iter()
                             .any(|(command_name, _)| command_name == name);
@@ -2720,6 +2765,9 @@ mod tests {
             InputResult::Submitted(text) => {
                 panic!("expected command dispatch, but composer submitted literal text: {text}")
             }
+            InputResult::Plan { message } => {
+                panic!("expected command dispatch, but composer returned Plan: {message}")
+            }
             InputResult::None => panic!("expected Command result for '/init'"),
         }
         assert!(composer.textarea.is_empty(), "composer should be cleared");
@@ -2793,8 +2841,69 @@ mod tests {
             InputResult::Submitted(text) => {
                 panic!("expected command dispatch after Tab completion, got literal submit: {text}")
             }
+            InputResult::Plan { message } => {
+                panic!("expected command dispatch after Tab completion, got Plan: {message}")
+            }
             InputResult::None => panic!("expected Command result for '/diff'"),
         }
+        assert!(composer.textarea.is_empty());
+    }
+
+    #[test]
+    fn slash_plan_requires_message() {
+        use crossterm::event::KeyCode;
+        use crossterm::event::KeyEvent;
+        use crossterm::event::KeyModifiers;
+
+        let (tx, _rx) = unbounded_channel::<AppEvent>();
+        let sender = AppEventSender::new(tx);
+        let mut composer = ChatComposer::new(
+            true,
+            sender,
+            false,
+            "Ask Codex to do anything".to_string(),
+            false,
+        );
+
+        type_chars_humanlike(&mut composer, &['/', 'p', 'l', 'a', 'n']);
+
+        let (result, _needs_redraw) =
+            composer.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert_eq!(result, InputResult::None);
+        assert_eq!(composer.textarea.text(), "/plan ");
+    }
+
+    #[test]
+    fn slash_plan_with_message_submits_plan_request() {
+        use crossterm::event::KeyCode;
+        use crossterm::event::KeyEvent;
+        use crossterm::event::KeyModifiers;
+
+        let (tx, _rx) = unbounded_channel::<AppEvent>();
+        let sender = AppEventSender::new(tx);
+        let mut composer = ChatComposer::new(
+            true,
+            sender,
+            false,
+            "Ask Codex to do anything".to_string(),
+            false,
+        );
+
+        type_chars_humanlike(
+            &mut composer,
+            &['/', 'p', 'l', 'a', 'n', ' ', 'd', 'o', ' ', 'i', 't'],
+        );
+
+        let (result, _needs_redraw) =
+            composer.handle_key_event(KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE));
+
+        assert_eq!(
+            result,
+            InputResult::Plan {
+                message: "do it".to_string()
+            }
+        );
         assert!(composer.textarea.is_empty());
     }
 
@@ -2825,6 +2934,9 @@ mod tests {
             }
             InputResult::Submitted(text) => {
                 panic!("expected command dispatch, but composer submitted literal text: {text}")
+            }
+            InputResult::Plan { message } => {
+                panic!("expected command dispatch, but composer returned Plan: {message}")
             }
             InputResult::None => panic!("expected Command result for '/mention'"),
         }

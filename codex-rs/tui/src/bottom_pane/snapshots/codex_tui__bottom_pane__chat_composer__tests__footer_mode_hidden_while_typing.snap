@@ -1,5 +1,6 @@
 ---
 source: tui/src/bottom_pane/chat_composer.rs
+assertion_line: 2085
 expression: terminal.backend()
 ---
 "                                                                                                    "
@@ -10,4 +11,4 @@ expression: terminal.backend()
 "                                                                                                    "
 "                                                                                                    "
 "                                                                                                    "
-"  [plan] · 100% context left                                                                        "
+"  100% context left                                                                                 "

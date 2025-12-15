@@ -1,5 +1,6 @@
 ---
 source: tui/src/bottom_pane/mod.rs
+assertion_line: 835
 expression: "render_snapshot(&pane, area)"
 ---
 • Working (0s • esc to interrupt)               
@@ -9,4 +10,4 @@ expression: "render_snapshot(&pane, area)"
                                                 
 › Ask Codex to do anything                      
                                                 
-  ? for shortcuts · [plan] · 100% context left
+  100% context left · ? for shortcuts
