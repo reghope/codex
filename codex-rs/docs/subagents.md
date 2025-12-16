@@ -30,7 +30,7 @@ If no `codex-subagents` blocks are found, Codex provides a small set of built-in
 
 ## Tool API
 
-The `sub_agents` feature is enabled by default. Disable it with `codex --disable sub_agents …` (or `-c features.sub_agents=false`).
+The `subagents` feature is enabled by default. Disable it with `codex --disable subagents …` (or `-c features.subagents=false`).
 
 Tool name: `subagents`
 

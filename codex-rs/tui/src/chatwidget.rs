@@ -1532,16 +1532,16 @@ impl ChatWidget {
             return;
         }
 
-        if key_event.code == KeyCode::Char('o') && key_event.modifiers == KeyModifiers::CONTROL {
-            let has_running = self
+        if key_event.code == KeyCode::Char('o')
+            && key_event.modifiers == KeyModifiers::CONTROL
+            && self
                 .subagents_update
                 .as_ref()
-                .is_some_and(|ev| ev.running_count > 0);
-            if has_running {
-                self.subagents_transcripts_open = !self.subagents_transcripts_open;
-                self.request_redraw();
-                return;
-            }
+                .is_some_and(|ev| ev.running_count > 0)
+        {
+            self.subagents_transcripts_open = !self.subagents_transcripts_open;
+            self.request_redraw();
+            return;
         }
 
         match key_event {
