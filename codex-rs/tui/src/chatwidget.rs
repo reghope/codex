@@ -397,6 +397,7 @@ pub(crate) struct ChatWidget {
     subagents_update: Option<codex_core::protocol::SubAgentsUpdateEvent>,
     subagents_transcripts_open: bool,
     subagents_background_mode: bool,
+    subagents_background_abort_pending: bool,
 }
 
 struct UserMessage {
@@ -857,13 +858,24 @@ impl ChatWidget {
     /// When there are queued user messages, restore them into the composer
     /// separated by newlines rather than auto‑submitting the next one.
     fn on_interrupted_turn(&mut self, reason: TurnAbortReason) {
+        let is_background_abort = self.subagents_background_abort_pending
+            && reason == TurnAbortReason::Interrupted
+            && self.subagents_background_mode;
+        self.subagents_background_abort_pending = false;
+
         // Finalize, log a gentle prompt, and clear running state.
         self.finalize_turn();
 
-        if reason != TurnAbortReason::ReviewEnded {
+        if !is_background_abort && reason != TurnAbortReason::ReviewEnded {
             self.add_to_history(history_cell::new_error_event(
                 "Conversation interrupted - tell the model what to do differently. Something went wrong? Hit `/feedback` to report the issue.".to_owned(),
             ));
+        }
+
+        if is_background_abort {
+            self.maybe_send_next_queued_input();
+            self.request_redraw();
+            return;
         }
 
         // If any messages were queued during the task, restore them into the composer.
@@ -1435,6 +1447,7 @@ impl ChatWidget {
             subagents_update: None,
             subagents_transcripts_open: false,
             subagents_background_mode: false,
+            subagents_background_abort_pending: false,
         };
 
         widget.prefetch_rate_limits();
@@ -1523,6 +1536,7 @@ impl ChatWidget {
             subagents_update: None,
             subagents_transcripts_open: false,
             subagents_background_mode: false,
+            subagents_background_abort_pending: false,
         };
 
         widget.prefetch_rate_limits();
@@ -2159,6 +2173,19 @@ impl ChatWidget {
         } else {
             self.subagents_update = Some(ev);
         }
+
+        if self.subagents_background_mode
+            && !self.subagents_background_abort_pending
+            && self.bottom_pane.is_task_running()
+            && self
+                .subagents_update
+                .as_ref()
+                .is_some_and(|update| update.running_count > 0)
+        {
+            self.subagents_background_abort_pending = true;
+            self.submit_op(Op::Interrupt);
+        }
+
         self.request_redraw();
     }
 
