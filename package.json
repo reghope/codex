@@ -1,6 +1,6 @@
 {
-  "name": "codex-monorepo",
-  "private": true,
+  "name": "codex-rh",
+  "private": false,
   "description": "Tools for repo-wide maintenance.",
   "scripts": {
     "format": "prettier --check *.json *.md docs/*.md .github/workflows/*.yml **/*.js",
@@ -21,5 +21,23 @@
     "node": ">=22",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@10.8.1"
+  "packageManager": "pnpm@10.8.1",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reghope/codex-rh.git"
+  },
+  "keywords": [
+    "codex"
+  ],
+  "author": "reghope",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/reghope/codex-rh/issues"
+  },
+  "homepage": "https://github.com/reghope/codex-rh#readme"
 }
