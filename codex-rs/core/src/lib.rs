@@ -94,6 +94,7 @@ pub use rollout::list::read_head_for_summary;
 mod function_tool;
 mod plan_mode;
 mod state;
+mod subagents;
 mod tasks;
 mod user_notification;
 mod user_shell_command;

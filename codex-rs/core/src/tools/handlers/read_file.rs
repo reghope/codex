@@ -6,6 +6,8 @@ use codex_utils_string::take_bytes_at_char_boundary;
 use serde::Deserialize;
 
 use crate::function_tool::FunctionCallError;
+use crate::protocol::EventMsg;
+use crate::protocol::ReadFileToolCallEvent;
 use crate::tools::context::ToolInvocation;
 use crate::tools::context::ToolOutput;
 use crate::tools::context::ToolPayload;
@@ -96,7 +98,13 @@ impl ToolHandler for ReadFileHandler {
     }
 
     async fn handle(&self, invocation: ToolInvocation) -> Result<ToolOutput, FunctionCallError> {
-        let ToolInvocation { payload, .. } = invocation;
+        let ToolInvocation {
+            session,
+            turn,
+            payload,
+            call_id,
+            ..
+        } = invocation;
 
         let arguments = match payload {
             ToolPayload::Function { arguments } => arguments,
@@ -139,6 +147,16 @@ impl ToolHandler for ReadFileHandler {
                 "file_path must be an absolute path".to_string(),
             ));
         }
+
+        session
+            .send_event(
+                turn.as_ref(),
+                EventMsg::ReadFileToolCall(ReadFileToolCallEvent {
+                    call_id,
+                    path: path.clone(),
+                }),
+            )
+            .await;
 
         let collected = match mode {
             ReadMode::Slice => slice::read(&path, offset, limit).await?,

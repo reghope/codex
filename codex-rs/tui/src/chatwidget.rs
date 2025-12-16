@@ -117,6 +117,7 @@ use crate::render::renderable::RenderableExt;
 use crate::render::renderable::RenderableItem;
 use crate::slash_command::SlashCommand;
 use crate::status::RateLimitSnapshotDisplay;
+use crate::subagents_pane::SubAgentsPane;
 use crate::text_formatting::truncate_text;
 use crate::tui::FrameRequester;
 mod interrupts;
@@ -391,6 +392,9 @@ pub(crate) struct ChatWidget {
     feedback: codex_feedback::CodexFeedback,
     // Current session rollout path (if known)
     current_rollout_path: Option<PathBuf>,
+
+    subagents_update: Option<codex_core::protocol::SubAgentsUpdateEvent>,
+    subagents_transcripts_open: bool,
 }
 
 struct UserMessage {
@@ -1426,6 +1430,8 @@ impl ChatWidget {
             last_rendered_width: std::cell::Cell::new(None),
             feedback,
             current_rollout_path: None,
+            subagents_update: None,
+            subagents_transcripts_open: false,
         };
 
         widget.prefetch_rate_limits();
@@ -1511,6 +1517,8 @@ impl ChatWidget {
             last_rendered_width: std::cell::Cell::new(None),
             feedback,
             current_rollout_path: None,
+            subagents_update: None,
+            subagents_transcripts_open: false,
         };
 
         widget.prefetch_rate_limits();
@@ -1522,6 +1530,18 @@ impl ChatWidget {
         if is_shift_tab(&key_event) {
             self.cycle_interaction_mode();
             return;
+        }
+
+        if key_event.code == KeyCode::Char('o') && key_event.modifiers == KeyModifiers::CONTROL {
+            let has_running = self
+                .subagents_update
+                .as_ref()
+                .is_some_and(|ev| ev.running_count > 0);
+            if has_running {
+                self.subagents_transcripts_open = !self.subagents_transcripts_open;
+                self.request_redraw();
+                return;
+            }
         }
 
         match key_event {
@@ -2055,6 +2075,7 @@ impl ChatWidget {
             EventMsg::PatchApplyEnd(ev) => self.on_patch_apply_end(ev),
             EventMsg::ExecCommandEnd(ev) => self.on_exec_command_end(ev),
             EventMsg::ViewImageToolCall(ev) => self.on_view_image_tool_call(ev),
+            EventMsg::ReadFileToolCall(_) => {}
             EventMsg::McpToolCallBegin(ev) => self.on_mcp_tool_call_begin(ev),
             EventMsg::McpToolCallEnd(ev) => self.on_mcp_tool_call_end(ev),
             EventMsg::WebSearchBegin(ev) => self.on_web_search_begin(ev),
@@ -2066,6 +2087,7 @@ impl ChatWidget {
             EventMsg::ShutdownComplete => self.on_shutdown_complete(),
             EventMsg::TurnDiff(TurnDiffEvent { unified_diff }) => self.on_turn_diff(unified_diff),
             EventMsg::DeprecationNotice(ev) => self.on_deprecation_notice(ev),
+            EventMsg::SubAgentsUpdate(ev) => self.on_subagents_update(ev),
             EventMsg::BackgroundEvent(BackgroundEventEvent { message }) => {
                 self.on_background_event(message)
             }
@@ -2091,6 +2113,16 @@ impl ChatWidget {
             | EventMsg::ReasoningContentDelta(_)
             | EventMsg::ReasoningRawContentDelta(_) => {}
         }
+    }
+
+    fn on_subagents_update(&mut self, ev: codex_core::protocol::SubAgentsUpdateEvent) {
+        if ev.running_count == 0 {
+            self.subagents_update = None;
+            self.subagents_transcripts_open = false;
+        } else {
+            self.subagents_update = Some(ev);
+        }
+        self.request_redraw();
     }
 
     fn on_entered_review_mode(&mut self, review: ReviewRequest) {
@@ -3473,7 +3505,18 @@ impl ChatWidget {
             Some(cell) => RenderableItem::Borrowed(cell).inset(Insets::tlbr(1, 0, 0, 0)),
             None => RenderableItem::Owned(Box::new(())),
         };
+        let subagents_renderable = match self.subagents_update.as_ref() {
+            Some(update) if update.running_count > 0 => {
+                RenderableItem::Owned(Box::new(SubAgentsPane {
+                    update,
+                    expanded: self.subagents_transcripts_open,
+                }))
+                .inset(Insets::tlbr(1, 0, 0, 0))
+            }
+            _ => RenderableItem::Owned(Box::new(())),
+        };
         let mut flex = FlexRenderable::new();
+        flex.push(0, subagents_renderable);
         flex.push(1, active_cell_renderable);
         flex.push(
             0,

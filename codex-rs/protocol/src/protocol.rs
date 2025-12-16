@@ -587,6 +587,12 @@ pub enum EventMsg {
     /// Notification that the agent attached a local image via the view_image tool.
     ViewImageToolCall(ViewImageToolCallEvent),
 
+    /// Notification that the agent read a file via the read_file tool.
+    ReadFileToolCall(ReadFileToolCallEvent),
+
+    /// Status updates for running sub-agents.
+    SubAgentsUpdate(SubAgentsUpdateEvent),
+
     ExecApprovalRequest(ExecApprovalRequestEvent),
 
     ElicitationRequest(ElicitationRequestEvent),
@@ -1499,6 +1505,72 @@ pub struct ViewImageToolCallEvent {
     pub call_id: String,
     /// Local filesystem path provided to the tool.
     pub path: PathBuf,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema, TS)]
+pub struct ReadFileToolCallEvent {
+    /// Identifier for the originating tool call.
+    pub call_id: String,
+    /// Local filesystem path provided to the tool.
+    pub path: PathBuf,
+}
+
+#[derive(
+    Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash, JsonSchema, TS, Display,
+)]
+#[serde(rename_all = "snake_case")]
+#[ts(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum SubAgentStatus {
+    Running,
+    Completed,
+    Failed,
+    Canceled,
+}
+
+#[derive(
+    Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, Hash, JsonSchema, TS, Display,
+)]
+#[serde(rename_all = "snake_case")]
+#[ts(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
+pub enum SubAgentActivityKind {
+    Bash,
+    Read,
+    Mcp,
+    WebSearch,
+    ApplyPatch,
+    Other,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, JsonSchema, TS)]
+pub struct SubAgentActivity {
+    pub kind: SubAgentActivityKind,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, JsonSchema, TS)]
+pub struct SubAgentUiItem {
+    pub id: String,
+    pub template: String,
+    pub title: String,
+    pub status: SubAgentStatus,
+    pub tool_uses: usize,
+    pub total_tokens: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub last_activity: Option<SubAgentActivity>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub transcript: Vec<String>,
+    #[serde(default)]
+    pub transcript_truncated: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Hash, JsonSchema, TS)]
+pub struct SubAgentsUpdateEvent {
+    pub created_count: usize,
+    pub running_count: usize,
+    pub agents: Vec<SubAgentUiItem>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, JsonSchema, TS)]

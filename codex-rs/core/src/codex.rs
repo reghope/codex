@@ -478,6 +478,11 @@ pub(crate) struct SessionSettingsUpdate {
 }
 
 impl Session {
+    pub(crate) async fn clone_original_config(&self) -> Config {
+        let state = self.state.lock().await;
+        (*state.session_configuration.original_config_do_not_use).clone()
+    }
+
     /// Don't expand the number of mutated arguments on config. We are in the process of getting rid of it.
     fn build_per_turn_config(session_configuration: &SessionConfiguration) -> Config {
         // todo(aibrahim): store this state somewhere else so we don't need to mut config
@@ -678,6 +683,7 @@ impl Session {
             models_manager: Arc::clone(&models_manager),
             tool_approvals: Mutex::new(ApprovalStore::default()),
             skills_manager,
+            subagents: crate::subagents::SubAgentsManager::default(),
         };
 
         let sess = Arc::new(Session {
@@ -689,6 +695,11 @@ impl Session {
             services,
             next_internal_sub_id: AtomicU64::new(0),
         });
+
+        sess.services
+            .subagents
+            .set_event_sender(tx_event.clone())
+            .await;
 
         // Dispatch the SessionConfiguredEvent first and then report any errors.
         // If resuming, include converted initial messages in the payload so UIs can render them immediately.
@@ -3098,6 +3109,7 @@ mod tests {
             models_manager,
             tool_approvals: Mutex::new(ApprovalStore::default()),
             skills_manager,
+            subagents: crate::subagents::SubAgentsManager::default(),
         };
 
         let turn_context = Session::make_turn_context(
@@ -3190,6 +3202,7 @@ mod tests {
             models_manager,
             tool_approvals: Mutex::new(ApprovalStore::default()),
             skills_manager,
+            subagents: crate::subagents::SubAgentsManager::default(),
         };
 
         let turn_context = Arc::new(Session::make_turn_context(

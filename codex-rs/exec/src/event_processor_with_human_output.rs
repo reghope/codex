@@ -549,6 +549,14 @@ impl EventProcessor for EventProcessorWithHumanOutput {
                     view.path.display()
                 );
             }
+            EventMsg::ReadFileToolCall(read) => {
+                ts_msg!(
+                    self,
+                    "{} {}",
+                    "read file".style(self.magenta),
+                    read.path.display()
+                );
+            }
             EventMsg::TurnAborted(abort_reason) => match abort_reason.reason {
                 TurnAbortReason::Interrupted => {
                     ts_msg!(self, "task interrupted");
@@ -586,7 +594,8 @@ impl EventProcessor for EventProcessorWithHumanOutput {
             | EventMsg::ReasoningContentDelta(_)
             | EventMsg::ReasoningRawContentDelta(_)
             | EventMsg::UndoCompleted(_)
-            | EventMsg::UndoStarted(_) => {}
+            | EventMsg::UndoStarted(_)
+            | EventMsg::SubAgentsUpdate(_) => {}
         }
         CodexStatus::Running
     }

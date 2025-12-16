@@ -64,6 +64,8 @@ pub enum Feature {
     ShellSnapshot,
     /// Experimental TUI v2 (viewport) implementation.
     Tui2,
+    /// Experimental sub-agent task runner.
+    SubAgents,
 }
 
 impl Feature {
@@ -358,6 +360,12 @@ pub const FEATURES: &[FeatureSpec] = &[
         key: "shell_snapshot",
         stage: Stage::Experimental,
         default_enabled: false,
+    },
+    FeatureSpec {
+        id: Feature::SubAgents,
+        key: "subagents",
+        stage: Stage::Experimental,
+        default_enabled: true,
     },
     FeatureSpec {
         id: Feature::Tui2,

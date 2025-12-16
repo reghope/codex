@@ -2053,6 +2053,7 @@ impl ChatWidget {
             EventMsg::PatchApplyEnd(ev) => self.on_patch_apply_end(ev),
             EventMsg::ExecCommandEnd(ev) => self.on_exec_command_end(ev),
             EventMsg::ViewImageToolCall(ev) => self.on_view_image_tool_call(ev),
+            EventMsg::ReadFileToolCall(_) | EventMsg::SubAgentsUpdate(_) => {}
             EventMsg::McpToolCallBegin(ev) => self.on_mcp_tool_call_begin(ev),
             EventMsg::McpToolCallEnd(ev) => self.on_mcp_tool_call_end(ev),
             EventMsg::WebSearchBegin(ev) => self.on_web_search_begin(ev),

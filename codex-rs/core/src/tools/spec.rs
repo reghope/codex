@@ -60,12 +60,21 @@ impl ToolsConfig {
             }
         };
 
+        let mut experimental_supported_tools = model_family.experimental_supported_tools.clone();
+        if features.enabled(Feature::SubAgents)
+            && !experimental_supported_tools
+                .iter()
+                .any(|tool| tool == "subagents")
+        {
+            experimental_supported_tools.push("subagents".to_string());
+        }
+
         Self {
             shell_type,
             apply_patch_tool_type,
             web_search_request: include_web_search_request,
             include_view_image_tool,
-            experimental_supported_tools: model_family.experimental_supported_tools.clone(),
+            experimental_supported_tools,
         }
     }
 }
@@ -622,6 +631,57 @@ fn create_read_file_tool() -> ToolSpec {
     })
 }
 
+fn create_subagents_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "action".to_string(),
+        JsonSchema::String {
+            description: Some(
+                "Action to perform: \"spawn\", \"poll\", \"cancel\", \"list\", or \"list_templates\"."
+                    .to_string(),
+            ),
+        },
+    );
+    properties.insert(
+        "template".to_string(),
+        JsonSchema::String {
+            description: Some("Sub-agent template name (for spawn).".to_string()),
+        },
+    );
+    properties.insert(
+        "task".to_string(),
+        JsonSchema::String {
+            description: Some("Task text for the sub-agent to execute (for spawn).".to_string()),
+        },
+    );
+    properties.insert(
+        "id".to_string(),
+        JsonSchema::String {
+            description: Some("Sub-agent id (for poll/cancel).".to_string()),
+        },
+    );
+    properties.insert(
+        "include_messages".to_string(),
+        JsonSchema::Boolean {
+            description: Some(
+                "When polling, include any queued sub-agent messages (defaults to false)."
+                    .to_string(),
+            ),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "subagents".to_string(),
+        description: "Spawns and monitors background task agents (sub-agents).".to_string(),
+        strict: false,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["action".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+    })
+}
+
 fn create_list_dir_tool() -> ToolSpec {
     let mut properties = BTreeMap::new();
     properties.insert(
@@ -985,6 +1045,7 @@ pub(crate) fn build_specs(
     use crate::tools::handlers::ReadFileHandler;
     use crate::tools::handlers::ShellCommandHandler;
     use crate::tools::handlers::ShellHandler;
+    use crate::tools::handlers::SubAgentsHandler;
     use crate::tools::handlers::TestSyncHandler;
     use crate::tools::handlers::UnifiedExecHandler;
     use crate::tools::handlers::ViewImageHandler;
@@ -1068,6 +1129,16 @@ pub(crate) fn build_specs(
         let read_file_handler = Arc::new(ReadFileHandler);
         builder.push_spec_with_parallel_support(create_read_file_tool(), true);
         builder.register_handler("read_file", read_file_handler);
+    }
+
+    if config
+        .experimental_supported_tools
+        .iter()
+        .any(|tool| tool == "subagents")
+    {
+        let subagents_handler = Arc::new(SubAgentsHandler);
+        builder.push_spec_with_parallel_support(create_subagents_tool(), true);
+        builder.register_handler("subagents", subagents_handler);
     }
 
     if config
