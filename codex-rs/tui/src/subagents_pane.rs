@@ -17,6 +17,7 @@ use crate::render::renderable::Renderable;
 pub(crate) struct SubAgentsPane<'a> {
     pub(crate) update: &'a SubAgentsUpdateEvent,
     pub(crate) expanded: bool,
+    pub(crate) background_mode: bool,
 }
 
 impl SubAgentsPane<'_> {
@@ -25,7 +26,7 @@ impl SubAgentsPane<'_> {
             return Vec::new();
         }
 
-        subagents_tree_lines(self.update, self.expanded)
+        subagents_tree_lines(self.update, self.expanded, self.background_mode)
     }
 }
 
@@ -42,8 +43,14 @@ impl Renderable for SubAgentsPane<'_> {
 fn subagents_tree_lines(
     update: &SubAgentsUpdateEvent,
     show_transcripts: bool,
+    background_mode: bool,
 ) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
+    let bg_badge = if background_mode {
+        "bg:on".cyan().bold()
+    } else {
+        "bg:off".dim()
+    };
     lines.push(Line::from(vec![
         "Running ".into(),
         update.running_count.to_string().bold(),
@@ -51,10 +58,15 @@ fn subagents_tree_lines(
         "(".dim(),
         "ctrl+o".dim(),
         if show_transcripts {
-            " to collapse transcripts)".dim()
+            " to collapse transcripts".dim()
         } else {
-            " to expand transcripts)".dim()
+            " to expand transcripts".dim()
         },
+        " · ".dim(),
+        "ctrl+b".dim(),
+        " ".dim(),
+        bg_badge,
+        ")".dim(),
     ]));
 
     for (idx, agent) in update.agents.iter().enumerate() {

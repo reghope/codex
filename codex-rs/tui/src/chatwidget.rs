@@ -146,6 +146,7 @@ use strum::IntoEnumIterator;
 
 const USER_SHELL_COMMAND_HELP_TITLE: &str = "Prefix a command with ! to run it locally";
 const USER_SHELL_COMMAND_HELP_HINT: &str = "Example: !ls";
+const SUBAGENTS_BACKGROUND_MODE_PROMPT: &str = "UI preference: if you use the `subagents` tool, run sub-agents in the background. Spawn them and return control to the user without waiting. While sub-agents are running, do not surface their messages into the main chat (progress appears in the sub-agent tree); only fetch/show detailed outputs when the user explicitly asks.";
 const PLAN_MODE_ENTRY_PROMPT_PREFIX: &str = r#"<user_instructions>
 Plan Mode entry requested.
 
@@ -395,6 +396,7 @@ pub(crate) struct ChatWidget {
 
     subagents_update: Option<codex_core::protocol::SubAgentsUpdateEvent>,
     subagents_transcripts_open: bool,
+    subagents_background_mode: bool,
 }
 
 struct UserMessage {
@@ -1432,6 +1434,7 @@ impl ChatWidget {
             current_rollout_path: None,
             subagents_update: None,
             subagents_transcripts_open: false,
+            subagents_background_mode: false,
         };
 
         widget.prefetch_rate_limits();
@@ -1519,6 +1522,7 @@ impl ChatWidget {
             current_rollout_path: None,
             subagents_update: None,
             subagents_transcripts_open: false,
+            subagents_background_mode: false,
         };
 
         widget.prefetch_rate_limits();
@@ -1529,6 +1533,25 @@ impl ChatWidget {
     pub(crate) fn handle_key_event(&mut self, key_event: KeyEvent) {
         if is_shift_tab(&key_event) {
             self.cycle_interaction_mode();
+            return;
+        }
+
+        if key_event.code == KeyCode::Char('b')
+            && key_event.modifiers == KeyModifiers::CONTROL
+            && key_event.kind == KeyEventKind::Press
+        {
+            self.subagents_background_mode = !self.subagents_background_mode;
+            let state = if self.subagents_background_mode {
+                "on"
+            } else {
+                "off"
+            };
+            self.add_info_message(
+                format!("Sub-agents background mode: {state}"),
+                Some(
+                    "When on, sub-agent progress stays in the tree while you keep chatting.".into(),
+                ),
+            );
             return;
         }
 
@@ -1802,7 +1825,15 @@ impl ChatWidget {
 
         let display_text = format!("/plan {message}");
 
-        let mut items: Vec<UserInput> = vec![UserInput::Text { text: prompt }];
+        let mut items: Vec<UserInput> = Vec::new();
+
+        if self.subagents_background_mode {
+            items.push(UserInput::Text {
+                text: SUBAGENTS_BACKGROUND_MODE_PROMPT.to_string(),
+            });
+        }
+
+        items.push(UserInput::Text { text: prompt });
 
         for path in image_paths {
             items.push(UserInput::LocalImage { path });
@@ -1918,6 +1949,12 @@ impl ChatWidget {
         }
 
         let mut items: Vec<UserInput> = Vec::new();
+
+        if self.subagents_background_mode {
+            items.push(UserInput::Text {
+                text: SUBAGENTS_BACKGROUND_MODE_PROMPT.to_string(),
+            });
+        }
 
         // Special-case: "!cmd" executes a local shell command instead of sending to the model.
         if let Some(stripped) = text.strip_prefix('!') {
@@ -3510,6 +3547,7 @@ impl ChatWidget {
                 RenderableItem::Owned(Box::new(SubAgentsPane {
                     update,
                     expanded: self.subagents_transcripts_open,
+                    background_mode: self.subagents_background_mode,
                 }))
                 .inset(Insets::tlbr(1, 0, 0, 0))
             }

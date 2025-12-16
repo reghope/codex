@@ -212,6 +212,7 @@ fn shortcut_overlay_lines(state: ShortcutsState) -> Vec<Line<'static>> {
     let mut newline = Line::from("");
     let mut file_paths = Line::from("");
     let mut paste_image = Line::from("");
+    let mut toggle_subagents_background = Line::from("");
     let mut edit_previous = Line::from("");
     let mut quit = Line::from("");
     let mut show_transcript = Line::from("");
@@ -223,6 +224,7 @@ fn shortcut_overlay_lines(state: ShortcutsState) -> Vec<Line<'static>> {
                 ShortcutId::InsertNewline => newline = text,
                 ShortcutId::FilePaths => file_paths = text,
                 ShortcutId::PasteImage => paste_image = text,
+                ShortcutId::ToggleSubagentsBackground => toggle_subagents_background = text,
                 ShortcutId::EditPrevious => edit_previous = text,
                 ShortcutId::Quit => quit = text,
                 ShortcutId::ShowTranscript => show_transcript = text,
@@ -235,6 +237,7 @@ fn shortcut_overlay_lines(state: ShortcutsState) -> Vec<Line<'static>> {
         newline,
         file_paths,
         paste_image,
+        toggle_subagents_background,
         edit_previous,
         quit,
         Line::from(""),
@@ -311,6 +314,7 @@ enum ShortcutId {
     InsertNewline,
     FilePaths,
     PasteImage,
+    ToggleSubagentsBackground,
     EditPrevious,
     Quit,
     ShowTranscript,
@@ -439,6 +443,15 @@ const SHORTCUTS: &[ShortcutDescriptor] = &[
         }],
         prefix: "",
         label: "",
+    },
+    ShortcutDescriptor {
+        id: ShortcutId::ToggleSubagentsBackground,
+        bindings: &[ShortcutBinding {
+            key: key_hint::ctrl(KeyCode::Char('b')),
+            condition: DisplayCondition::Always,
+        }],
+        prefix: "",
+        label: " to toggle sub-agent background mode",
     },
     ShortcutDescriptor {
         id: ShortcutId::Quit,
