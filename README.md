@@ -1,4 +1,4 @@
-<p align="center"><code>npm i -g @openai/codex</code><br />
+<p align="center"><code>npm i -g codex-rh</code><br />
 
 <p align="center"><strong>Codex-rh</strong> is an OpenAI Codex CLI fork that runs locally on your computer, introducing plan-mode and other features like async subagents.
 </br>

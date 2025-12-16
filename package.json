@@ -1,7 +1,7 @@
 {
   "name": "codex-rh",
   "private": false,
-  "description": "Tools for repo-wide maintenance.",
+  "description": "Codex fork that adds plan-mode and other powerful features.",
   "scripts": {
     "format": "prettier --check *.json *.md docs/*.md .github/workflows/*.yml **/*.js",
     "format:fix": "prettier --write *.json *.md docs/*.md .github/workflows/*.yml **/*.js"
@@ -32,7 +32,11 @@
     "url": "git+https://github.com/reghope/codex-rh.git"
   },
   "keywords": [
-    "codex-rh"
+    "codex",
+    "codex-rh",
+    "fork",
+    "plan-mode",
+    "subagents"
   ],
   "author": "reghope",
   "license": "ISC",
