@@ -64,6 +64,12 @@ const archRoot = path.join(vendorRoot, targetTriple);
 const codexBinaryName = process.platform === "win32" ? "codex.exe" : "codex";
 const binaryPath = path.join(archRoot, "codex", codexBinaryName);
 
+if (!existsSync(binaryPath)) {
+  throw new Error(
+    `Missing Codex binary at ${binaryPath}. This package must be published with prebuilt binaries under codex-cli/vendor/.`,
+  );
+}
+
 // Use an asynchronous spawn instead of spawnSync so that Node is able to
 // respond to signals (e.g. Ctrl-C / SIGINT) while the native binary is
 // executing. This allows us to forward those signals to the child process

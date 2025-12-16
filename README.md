@@ -16,13 +16,19 @@
 Install globally with your preferred package manager. If you use npm:
 
 ```shell
-npm install -g @openai/codex-rh
+npm install -g codex-rh
 ```
 
-Then simply run `codex` to get started:
+Then run:
 
 ```shell
 codex-rh
+```
+
+If you see `codex-rh: command not found`, ensure your npm global bin dir is on `PATH`:
+
+```shell
+export PATH="$(npm config get prefix)/bin:$PATH"
 ```
 
 ---

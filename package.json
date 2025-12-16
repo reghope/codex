@@ -2,6 +2,10 @@
   "name": "codex-rh",
   "private": false,
   "description": "Codex fork that adds plan-mode and other powerful features.",
+  "type": "module",
+  "bin": {
+    "codex-rh": "bin/codex-rh.js"
+  },
   "scripts": {
     "format": "prettier --check *.json *.md docs/*.md .github/workflows/*.yml **/*.js",
     "format:fix": "prettier --write *.json *.md docs/*.md .github/workflows/*.yml **/*.js"
@@ -23,7 +27,14 @@
   },
   "packageManager": "pnpm@10.8.1",
   "version": "1.0.3",
-  "main": "index.js",
+  "files": [
+    "bin",
+    "codex-cli/bin",
+    "codex-cli/vendor",
+    "LICENSE",
+    "NOTICE",
+    "README.md"
+  ],
   "directories": {
     "doc": "docs"
   },
