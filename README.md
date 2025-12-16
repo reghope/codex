@@ -1,12 +1,10 @@
 <p align="center"><code>npm i -g @openai/codex</code><br />or <code>brew install --cask codex</code></p>
 
-<p align="center"><strong>Codex CLI</strong> is a coding agent from OpenAI that runs locally on your computer.
+<p align="center"><strong>Codex-rh CLI</strong> is an OpenAI Codex CLI fork that runs locally on your computer, introducing plan-mode and other features like async subagents.
 </br>
-</br>If you want Codex in your code editor (VS Code, Cursor, Windsurf), <a href="https://developers.openai.com/codex/ide">install in your IDE</a>
-</br>If you are looking for the <em>cloud-based agent</em> from OpenAI, <strong>Codex Web</strong>, go to <a href="https://chatgpt.com/codex">chatgpt.com/codex</a></p>
 
 <p align="center">
-  <img src="./.github/codex-cli-splash.png" alt="Codex CLI splash" width="80%" />
+  <img src="./.github/codex-cli-plan-mode.png" alt="Codex CLI plan mode" width="80%" />
   </p>
 
 ---
@@ -18,19 +16,13 @@
 Install globally with your preferred package manager. If you use npm:
 
 ```shell
-npm install -g @openai/codex
-```
-
-Alternatively, if you use Homebrew:
-
-```shell
-brew install --cask codex
+npm install -g @openai/codex-rh
 ```
 
 Then simply run `codex` to get started:
 
 ```shell
-codex
+codex-rh
 ```
 
 If you're running into upgrade issues with Homebrew, see the [FAQ entry on brew upgrade codex](./docs/faq.md#brew-upgrade-codex-isnt-upgrading-me).
